@@ -1,6 +1,0 @@
-node_modules/
-dist/
-*.sqlaudit
-.env
-.DS_Store
-Thumbs.db

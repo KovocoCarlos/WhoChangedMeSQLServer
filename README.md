@@ -1,129 +1,74 @@
-# Who Changed Me — SQL Server Auditor
+# Who Changed That — SQL Server Version
 
-A desktop application that audits changes to a **single SQL Server object** using SQL Server Audit. It tracks *who* made changes and *from where* (IP, hostname, application).
+**A Kovoco Inc tool** to audit changes on a single SQL Server object and identify who made changes and from where.
 
-![Electron](https://img.shields.io/badge/Electron-28-47848F?logo=electron)
-![SQL Server](https://img.shields.io/badge/SQL%20Server-2016+-CC2927?logo=microsoftsqlserver)
-![License](https://img.shields.io/badge/license-MIT-blue)
-
-## Features
-
-- **Connect** to any SQL Server instance with SQL authentication
-- **Browse** databases and objects (tables, views, stored procedures, functions, triggers)
-- **Create a targeted audit** on a single object — ignores everything else
-- **Read audit results** with a focus on:
-  - **Who** made the change (server/database principal)
-  - **From where** (client IP, hostname, application name)
-  - **What** they did (INSERT, UPDATE, DELETE, ALTER, SELECT, EXECUTE)
-  - **Full SQL statement** that was executed
-- **Filter** results by action type
-- **Summary dashboard** with unique user count, source IPs, and most common action
-
-## Prerequisites
-
-- **Node.js** 18+ and **npm**
-- **SQL Server** 2016 or later (Audit feature requires Standard or Enterprise edition)
-- The SQL login used must have **sysadmin** or **ALTER ANY SERVER AUDIT** permission
-- The audit file path must exist on the **SQL Server machine** (not your local machine, unless they're the same)
+**Zero dependencies.** Just copy two files to your server and run.
 
 ## Quick Start
 
-```bash
-# Clone or navigate to the repository
-cd D:\GitHub\WhoChangedMeSQLServer
-
-# Install dependencies
-npm install
-
-# Run the app
-npm start
+```powershell
+# 1. Copy the folder to your SQL Server machine
+# 2. Open PowerShell and run:
+.\Start-WhoChangedThat.ps1
 ```
+
+Your browser opens automatically to the UI. That's it.
+
+## What's in the Box
+
+| File | Purpose |
+|------|---------|
+| `Start-WhoChangedThat.ps1` | PowerShell script — runs a local HTTP server + all SQL Server operations |
+| `index.html` | The browser-based UI — served by the PowerShell script |
+
+**No Node.js, no npm, no Python, no installers.** Uses built-in .NET `System.Data.SqlClient` for SQL Server connectivity.
+
+## Requirements
+
+- **Windows Server** with **PowerShell 5.1+** (standard on Windows Server 2016+)
+- **SQL Server 2016+** (Standard or Enterprise — Audit requires these editions)
+- A SQL login with **sysadmin** or **ALTER ANY SERVER AUDIT** permission
+- The audit file output path must exist on the SQL Server machine
 
 ## How It Works
 
-### Step 1: Connect
-Enter your SQL Server credentials and connect. The app uses SQL Authentication via the `mssql` Node.js driver.
+1. **Connection** — Enter SQL Server credentials (SQL Authentication via .NET SqlClient)
+2. **Select Object** — Pick a database and the specific object to audit
+3. **Configure Audit** — Set the path for `.sqlaudit` files, then create the audit
+4. **Audit Results** — View who changed what, from which IP, hostname, and application
 
-### Step 2: Select Object
-Pick a database, then select the specific object (table, view, stored proc, etc.) you want to audit.
+The tool creates a **Server Audit** + **Database Audit Specification** scoped to your single object, capturing INSERT, UPDATE, DELETE, SELECT, EXECUTE, and schema changes (ALTER/DROP/CREATE).
 
-### Step 3: Configure Audit
-Provide a path on the **SQL Server machine** where `.sqlaudit` files will be written. Click **Create & Start Audit**. This creates:
+## Options
 
-1. A **Server Audit** (`WCM_Audit_{db}_{schema}_{object}`) writing to the specified file path
-2. A **Database Audit Specification** scoped to your chosen object, capturing:
-   - `SCHEMA_OBJECT_CHANGE_GROUP` (ALTER/DROP/CREATE on the object)
-   - `INSERT`, `UPDATE`, `DELETE`, `SELECT`, `EXECUTE` on the object
+```powershell
+# Use a different port (default: 8642)
+.\Start-WhoChangedThat.ps1 -Port 9000
 
-### Step 4: View Results
-Navigate to **Audit Results** and click refresh. The app reads the `.sqlaudit` files using `sys.fn_get_audit_file()` and displays results filtered to your object only.
-
-## Building for Distribution
-
-```bash
-# Windows installer
-npm run build:win
-
-# macOS
-npm run build:mac
-
-# Linux
-npm run build:linux
+# Don't auto-open the browser
+.\Start-WhoChangedThat.ps1 -NoBrowser
 ```
-
-Built binaries will appear in the `dist/` folder.
-
-## Project Structure
-
-```
-WhoChangedMeSQLServer/
-├── package.json
-├── README.md
-├── .gitignore
-└── src/
-    ├── main/
-    │   ├── main.js          # Electron main process + SQL Server IPC handlers
-    │   └── preload.js        # Secure bridge between renderer and main
-    └── renderer/
-        └── index.html        # Full UI (HTML + CSS + JS in single file)
-```
-
-## SQL Server Permissions Required
-
-The login used to connect needs:
-
-| Permission | Scope | Purpose |
-|---|---|---|
-| `ALTER ANY SERVER AUDIT` | Server | Create/manage the server audit |
-| `ALTER ANY DATABASE AUDIT` | Database | Create the database audit specification |
-| `VIEW SERVER STATE` | Server | Read audit file via `sys.fn_get_audit_file` |
-
-Or simply use a login with the **sysadmin** server role.
-
-## Troubleshooting
-
-**"Cannot create audit — path does not exist"**
-The file path must exist on the SQL Server machine. Create the folder there first.
-
-**"Permission denied creating audit"**
-Ensure your login has `ALTER ANY SERVER AUDIT` at the server level.
-
-**"No results showing"**
-- Verify the audit is running (check the Audit Config page)
-- Make sure you're pointing to the correct audit file path
-- Perform a change on the audited object and refresh
-
-**"Cannot connect"**
-- Verify SQL Server is accepting TCP/IP connections on the specified port
-- Check that SQL Server Authentication is enabled (mixed mode)
-- Ensure `Trust Server Certificate` is checked if using a self-signed cert
 
 ## Cleanup
 
-To remove the audit when done:
-1. Go to **Configure Audit** and click **Stop & Remove Audit**
+1. In the UI, go to **Configure Audit** → click **Stop & Remove Audit**
 2. Delete the `.sqlaudit` files from the output directory if no longer needed
+3. Press `Ctrl+C` in the PowerShell window to stop the server
+
+## Troubleshooting
+
+**"Could not start listener on port 8642"**
+Run PowerShell as Administrator, or use a different port with `-Port 9000`.
+
+**"Not connected to SQL Server"**
+Make sure you've connected on the Connection page first.
+
+**"Audit path does not exist"**
+The path must exist on the SQL Server machine. Create the folder first.
+
+**Fonts not loading**
+The UI uses Google Fonts (Inter, Cabin, Nunito Sans, Roboto Slab). If the server has no internet access, the UI still works — it falls back to system fonts.
 
 ## License
 
-MIT
+MIT — Kovoco Inc
