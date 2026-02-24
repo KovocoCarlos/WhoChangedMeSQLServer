@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline';">
+  <title>Who Changed That — SQL Server Version</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Cabin:wght@400;500;600;700&family=Nunito+Sans:wght@300;400;500;600;700&family=Roboto+Slab:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --kovoco-blue: #146BCD;
+      --kovoco-blue-light: rgba(20, 107, 205, 0.12);
+      --kovoco-blue-glow: rgba(20, 107, 205, 0.18);
+      --kovoco-blue-hover: #1878e0;
+      --steel: #002D72;
+      --steel-deep: #001a44;
+      --slate-gray: #4a4a4a;
+      --light-purple: #9784E1;
+      --light-purple-glow: rgba(151, 132, 225, 0.14);
+      --cool-mint: #AAD298;
+      --cool-mint-glow: rgba(170, 210, 152, 0.14);
+      --white-smoke: #f5f5f5;
+      --bg-deep: #010a1c;
+      --bg-primary: #021231;
+      --bg-card: #061a3d;
+      --bg-card-hover: #0a2250;
+      --bg-input: #030e26;
+      --border: #0f2e5e;
+      --border-focus: var(--kovoco-blue);
+      --text-primary: #e8ecf4;
+      --text-secondary: #8a9bc0;
+      --text-muted: #506080;
+      --accent: var(--kovoco-blue);
+      --accent-glow: var(--kovoco-blue-glow);
+      --success: var(--cool-mint);
+      --success-glow: var(--cool-mint-glow);
+      --warning: #f0a830;
+      --warning-glow: rgba(240, 168, 48, 0.14);
+      --danger: #e85454;
+      --danger-glow: rgba(232, 84, 84, 0.14);
+      --insert-color: var(--cool-mint);
+      --update-color: #f0a830;
+      --delete-color: #e85454;
+      --select-color: var(--light-purple);
+      --alter-color: #d96eae;
+      --execute-color: var(--light-purple);
+      --radius: 8px;
+      --radius-lg: 12px;
+    }
+
+    body {
+      font-family: 'Nunito Sans', 'Inter', -apple-system, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      overflow: hidden;
+      height: 100vh;
+      -webkit-app-region: drag;
+    }
+
+    .titlebar {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      background: var(--steel-deep);
+      border-bottom: 1px solid var(--border);
+      -webkit-app-region: drag;
+      position: relative;
+      z-index: 100;
+    }
+    .titlebar-text {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .titlebar-text .brand-mark {
+      color: var(--kovoco-blue);
+      font-weight: 900;
+    }
+
+    .app {
+      display: flex;
+      height: calc(100vh - 40px);
+      -webkit-app-region: no-drag;
+    }
+
+    .sidebar {
+      width: 272px;
+      min-width: 272px;
+      background: var(--bg-primary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 22px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-header h1 {
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 900;
+      color: var(--text-primary);
+      margin-bottom: 3px;
+      letter-spacing: -0.2px;
+    }
+    .sidebar-header h1 .accent { color: var(--kovoco-blue); }
+    .sidebar-header p {
+      font-family: 'Nunito Sans', sans-serif;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .nav-section { padding: 18px 12px 8px; }
+    .nav-section-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 0 10px;
+      margin-bottom: 8px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-family: 'Cabin', 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+      border: 1px solid transparent;
+    }
+    .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+    .nav-item.active {
+      background: var(--kovoco-blue-light);
+      color: var(--kovoco-blue);
+      border-color: rgba(20, 107, 205, 0.22);
+    }
+    .nav-icon {
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nav-icon svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    .connection-indicator {
+      margin-top: auto;
+      padding: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .conn-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      font-family: 'Nunito Sans', sans-serif;
+      font-size: 12px;
+    }
+    .conn-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--danger);
+      flex-shrink: 0;
+    }
+    .conn-dot.connected { background: var(--cool-mint); box-shadow: 0 0 10px var(--cool-mint-glow); }
+    .conn-text { color: var(--text-secondary); }
+    .sidebar-footer {
+      padding: 0 14px 14px;
+      font-family: 'Inter', sans-serif;
+      font-size: 9px;
+      color: var(--text-muted);
+      opacity: 0.5;
+      letter-spacing: 0.5px;
+    }
+
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px 36px;
+      background: var(--bg-deep);
+    }
+    .main-content::-webkit-scrollbar { width: 6px; }
+    .main-content::-webkit-scrollbar-track { background: transparent; }
+    .main-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .page { display: none; animation: fadeIn 0.2s ease; }
+    .page.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .page-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 22px;
+      font-weight: 900;
+      margin-bottom: 4px;
+      letter-spacing: -0.3px;
+    }
+    .page-subtitle {
+      font-family: 'Nunito Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-label { font-family: 'Cabin', sans-serif; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    .form-input, .form-select {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: 'Nunito Sans', sans-serif;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-input:focus, .form-select:focus {
+      border-color: var(--kovoco-blue);
+      box-shadow: 0 0 0 3px var(--kovoco-blue-light);
+    }
+    .form-input::placeholder { color: var(--text-muted); }
+    .form-select {
+      cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23506080' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+    }
+    .form-select option { background: var(--bg-card); color: var(--text-primary); }
+
+    .checkbox-row { display: flex; align-items: center; gap: 8px; padding-top: 8px; }
+    .checkbox-row input[type="checkbox"] { accent-color: var(--kovoco-blue); width: 16px; height: 16px; cursor: pointer; }
+    .checkbox-row label { font-family: 'Nunito Sans', sans-serif; font-size: 12px; color: var(--text-secondary); cursor: pointer; }
+
+    .path-input-row { display: flex; gap: 8px; }
+    .path-input-row .form-input { flex: 1; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px;
+      border-radius: var(--radius); font-family: 'Inter', sans-serif; font-size: 13px;
+      font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.15s;
+    }
+    .btn-primary { background: var(--kovoco-blue); color: white; border-color: var(--kovoco-blue); }
+    .btn-primary:hover { background: var(--kovoco-blue-hover); box-shadow: 0 0 24px var(--kovoco-blue-glow); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-secondary { background: var(--bg-card); color: var(--text-secondary); border-color: var(--border); }
+    .btn-secondary:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+    .btn-danger { background: var(--danger-glow); color: var(--danger); border-color: rgba(232,84,84,0.3); }
+    .btn-danger:hover { background: rgba(232,84,84,0.22); }
+    .btn-success { background: var(--cool-mint-glow); color: #6aad52; border-color: rgba(170,210,152,0.3); }
+    .btn-success:hover { background: rgba(170,210,152,0.22); }
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+
+    .object-list { max-height: 350px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+    .object-list::-webkit-scrollbar { width: 5px; }
+    .object-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .object-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s;
+    }
+    .object-item:last-child { border-bottom: none; }
+    .object-item:hover { background: var(--bg-card-hover); }
+    .object-item.selected { background: var(--kovoco-blue-light); border-color: rgba(20,107,205,0.2); }
+    .object-name { font-family: 'Roboto Slab', serif; font-size: 12px; font-weight: 500; color: var(--text-primary); }
+    .object-type {
+      font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 700; color: var(--text-muted);
+      background: var(--bg-input); padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .search-input {
+      width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 10px 12px 10px 36px; color: var(--text-primary); font-family: 'Nunito Sans', sans-serif; font-size: 13px;
+      outline: none; margin-bottom: 12px; transition: border-color 0.15s, box-shadow 0.15s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%23506080' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 10-1.397 1.398h-.001l3.85 3.85a1 1 0 001.415-1.414l-3.85-3.85zm-5.242.156a5 5 0 110-10 5 5 0 010 10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: 12px center;
+    }
+    .search-input:focus { border-color: var(--kovoco-blue); box-shadow: 0 0 0 3px var(--kovoco-blue-light); }
+    .search-input::placeholder { color: var(--text-muted); }
+
+    .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .results-count { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+    .table-wrap { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .results-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .results-table thead { background: var(--bg-card); position: sticky; top: 0; z-index: 1; }
+    .results-table th {
+      padding: 12px 14px; text-align: left; font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 700;
+      color: var(--text-muted); letter-spacing: 1.2px; text-transform: uppercase;
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    .results-table td {
+      padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-secondary);
+      font-family: 'Nunito Sans', sans-serif; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .results-table tbody tr { transition: background 0.1s; }
+    .results-table tbody tr:hover { background: var(--bg-card-hover); }
+    .results-table tbody tr:last-child td { border-bottom: none; }
+    .table-scroll { max-height: 500px; overflow-y: auto; }
+    .table-scroll::-webkit-scrollbar { width: 5px; }
+    .table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .action-badge {
+      display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 4px;
+      font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+    }
+    .action-badge.insert  { background: var(--cool-mint-glow); color: var(--cool-mint); }
+    .action-badge.update  { background: var(--warning-glow); color: var(--warning); }
+    .action-badge.delete  { background: var(--danger-glow); color: var(--danger); }
+    .action-badge.select  { background: var(--light-purple-glow); color: var(--light-purple); }
+    .action-badge.alter   { background: rgba(217,110,174,0.12); color: #d96eae; }
+    .action-badge.execute { background: var(--light-purple-glow); color: var(--light-purple); }
+    .action-badge.create  { background: rgba(217,110,174,0.12); color: #d96eae; }
+    .action-badge.drop    { background: var(--danger-glow); color: var(--danger); }
+    .action-badge.other   { background: rgba(80,96,128,0.12); color: var(--text-muted); }
+
+    .who-cell { display: flex; flex-direction: column; gap: 2px; }
+    .who-principal { font-family: 'Inter', sans-serif; font-weight: 700; color: var(--text-primary); }
+    .who-detail { font-size: 10px; color: var(--text-muted); font-family: 'Roboto Slab', serif; }
+    .ip-badge { font-family: 'Roboto Slab', serif; font-size: 11px; font-weight: 500; color: var(--kovoco-blue); }
+
+    .stmt-preview { cursor: pointer; color: var(--text-muted); font-family: 'Roboto Slab', serif; font-size: 11px; }
+    .stmt-preview:hover { color: var(--text-primary); }
+
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,10,28,0.8);
+      z-index: 1000; align-items: center; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      width: 90%; max-width: 800px; max-height: 80vh; display: flex; flex-direction: column;
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+    }
+    .modal-header h3 { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; }
+    .modal-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; padding: 4px 8px; }
+    .modal-close:hover { color: var(--text-primary); }
+    .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+    .modal-body pre { font-family: 'Roboto Slab', serif; font-size: 12px; line-height: 1.6; color: var(--text-secondary); white-space: pre-wrap; word-break: break-all; }
+
+    .status-msg { padding: 12px 16px; border-radius: var(--radius); font-family: 'Nunito Sans', sans-serif; font-size: 12px; margin-top: 12px; display: none; }
+    .status-msg.show { display: block; }
+    .status-msg.error { background: var(--danger-glow); color: var(--danger); border: 1px solid rgba(232,84,84,0.2); }
+    .status-msg.success { background: var(--cool-mint-glow); color: #6aad52; border: 1px solid rgba(170,210,152,0.2); }
+    .status-msg.info { background: var(--kovoco-blue-light); color: var(--kovoco-blue); border: 1px solid rgba(20,107,205,0.2); }
+
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--kovoco-blue); border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .summary-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; }
+    .summary-card-label { font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .summary-card-value { font-family: 'Inter', sans-serif; font-size: 26px; font-weight: 900; color: var(--text-primary); }
+    .summary-card-detail { font-family: 'Nunito Sans', sans-serif; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .empty-state-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+    .empty-state-text { font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+    .empty-state-hint { font-family: 'Nunito Sans', sans-serif; font-size: 12px; color: var(--text-muted); }
+
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filter-chip {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg-card);
+      color: var(--text-secondary); font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .filter-chip:hover { border-color: var(--kovoco-blue); color: var(--text-primary); }
+    .filter-chip.active { background: var(--kovoco-blue-light); color: var(--kovoco-blue); border-color: rgba(20,107,205,0.3); }
+
+    .audit-pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--cool-mint); animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(170,210,152,0.4); }
+      50% { opacity: 0.8; box-shadow: 0 0 0 8px rgba(170,210,152,0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="titlebar">
+    <span class="titlebar-text"><span class="brand-mark">KOVOCO</span> &nbsp;·&nbsp; Who Changed That — SQL Server Version</span>
+  </div>
+
+  <div class="app">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h1>Who Changed <span class="accent">That</span></h1>
+        <p>SQL Server Version</p>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Setup</div>
+        <div class="nav-item active" data-page="connect">
+          <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+          <span>Connection</span>
+        </div>
+        <div class="nav-item" data-page="target">
+          <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+          <span>Select Object</span>
+        </div>
+        <div class="nav-item" data-page="audit-config">
+          <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span>
+          <span>Configure Audit</span>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Results</div>
+        <div class="nav-item" data-page="results">
+          <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span>
+          <span>Audit Results</span>
+        </div>
+      </div>
+
+      <div class="connection-indicator">
+        <div class="conn-badge">
+          <div class="conn-dot" id="connDot"></div>
+          <span class="conn-text" id="connText">Not connected</span>
+        </div>
+      </div>
+      <div class="sidebar-footer">Powered by Kovoco Inc</div>
+    </div>
+
+    <div class="main-content">
+      <div class="page active" id="page-connect">
+        <div class="page-title">Connect to SQL Server</div>
+        <div class="page-subtitle">Enter your server credentials to begin auditing</div>
+        <div class="card">
+          <div class="card-title">Connection Details</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Server / Host</label>
+              <input type="text" class="form-input" id="inp-server" placeholder="localhost" value="localhost">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Port</label>
+              <input type="text" class="form-input" id="inp-port" placeholder="1433" value="1433">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Username</label>
+              <input type="text" class="form-input" id="inp-user" placeholder="sa">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <input type="password" class="form-input" id="inp-pass" placeholder="••••••••">
+            </div>
+            <div class="form-group full">
+              <div class="checkbox-row">
+                <input type="checkbox" id="inp-encrypt">
+                <label for="inp-encrypt">Encrypt connection</label>
+              </div>
+              <div class="checkbox-row">
+                <input type="checkbox" id="inp-trustcert" checked>
+                <label for="inp-trustcert">Trust server certificate</label>
+              </div>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-secondary" id="btn-test">Test Connection</button>
+            <button class="btn btn-primary" id="btn-connect">Connect</button>
+          </div>
+          <div class="status-msg" id="conn-status"></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-target">
+        <div class="page-title">Select Target Object</div>
+        <div class="page-subtitle">Choose the single database object you want to audit</div>
+        <div class="card">
+          <div class="card-title">Database</div>
+          <div class="form-group">
+            <select class="form-select" id="sel-database">
+              <option value="">— Select a database —</option>
+            </select>
+          </div>
+        </div>
+        <div class="card" id="objects-card" style="display:none;">
+          <div class="card-title">Database Objects</div>
+          <input type="text" class="search-input" id="obj-search" placeholder="Search objects…">
+          <div class="object-list" id="obj-list"></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-select-obj" disabled>Continue with Selected Object</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" id="page-audit-config">
+        <div class="page-title">Configure Audit</div>
+        <div class="page-subtitle">Set up SQL Server Audit for the selected object</div>
+        <div id="audit-target-info" class="card" style="display:none;">
+          <div class="card-title">Audit Target</div>
+          <div style="display:flex;gap:12px;align-items:center;">
+            <span style="font-family:'Roboto Slab',serif;font-size:14px;font-weight:600;" id="audit-target-name"></span>
+            <span class="object-type" id="audit-target-type"></span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Audit File Location</div>
+          <p style="font-family:'Nunito Sans',sans-serif;font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+            This path must exist <strong>on the SQL Server machine</strong>. The audit files (.sqlaudit) will be written here.
+          </p>
+          <div class="form-group">
+            <div class="path-input-row">
+              <input type="text" class="form-input" id="inp-audit-path" placeholder="C:\SQLAudit\WhoChangedThat">
+              <button class="btn btn-secondary btn-sm" id="btn-browse" title="Browse (local only)">📁</button>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-success" id="btn-create-audit">▶ Create &amp; Start Audit</button>
+          <button class="btn btn-danger" id="btn-remove-audit">⏹ Stop &amp; Remove Audit</button>
+        </div>
+        <div class="status-msg" id="audit-status"></div>
+      </div>
+
+      <div class="page" id="page-results">
+        <div class="page-title">Audit Results</div>
+        <div class="page-subtitle">Who changed your object and from where</div>
+        <div id="results-banner" style="display:none;"></div>
+        <div class="btn-row" style="margin-top:0;margin-bottom:20px;">
+          <button class="btn btn-primary" id="btn-refresh-results">↻ Refresh Results</button>
+        </div>
+        <div id="results-summary" style="display:none;"></div>
+        <div id="results-filter-bar" style="display:none;"></div>
+        <div id="results-container">
+          <div class="empty-state">
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-text">No audit results yet</div>
+            <div class="empty-state-hint">Configure and start an audit, then come back here to see changes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="stmt-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>SQL Statement</h3>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <pre id="modal-stmt"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = { connected: false, config: {}, database: null, selectedObject: null, auditPath: '', results: [], activeFilter: 'ALL' };
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => showPage(item.dataset.page));
+    });
+
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById(`page-${pageId}`).classList.add('active');
+      document.querySelector(`.nav-item[data-page="${pageId}"]`).classList.add('active');
+      if (pageId === 'target' && state.connected) loadDatabases();
+      if (pageId === 'audit-config' && state.selectedObject) showAuditConfig();
+      if (pageId === 'results') refreshResults();
+    }
+
+    function getConfig() {
+      return {
+        server: document.getElementById('inp-server').value,
+        port: document.getElementById('inp-port').value,
+        username: document.getElementById('inp-user').value,
+        password: document.getElementById('inp-pass').value,
+        encrypt: document.getElementById('inp-encrypt').checked,
+        trustCert: document.getElementById('inp-trustcert').checked,
+        database: state.database || 'master'
+      };
+    }
+
+    function showStatus(elId, msg, type) {
+      const el = document.getElementById(elId);
+      el.textContent = msg;
+      el.className = `status-msg show ${type}`;
+      if (type === 'success') setTimeout(() => el.classList.remove('show'), 4000);
+    }
+
+    document.getElementById('btn-test').addEventListener('click', async () => {
+      const cfg = getConfig();
+      showStatus('conn-status', 'Testing connection…', 'info');
+      const res = await window.api.testConnection(cfg);
+      showStatus('conn-status', res.success ? '✓ Connection successful!' : `✗ ${res.error}`, res.success ? 'success' : 'error');
+    });
+
+    document.getElementById('btn-connect').addEventListener('click', async () => {
+      const cfg = getConfig();
+      showStatus('conn-status', 'Connecting…', 'info');
+      const res = await window.api.connect(cfg);
+      if (res.success) {
+        state.connected = true;
+        state.config = cfg;
+        updateConnectionUI();
+        showStatus('conn-status', '✓ Connected! Navigate to "Select Object" to continue.', 'success');
+      } else {
+        showStatus('conn-status', `✗ ${res.error}`, 'error');
+      }
+    });
+
+    function updateConnectionUI() {
+      const dot = document.getElementById('connDot');
+      const text = document.getElementById('connText');
+      if (state.connected) { dot.classList.add('connected'); text.textContent = state.config.server; }
+      else { dot.classList.remove('connected'); text.textContent = 'Not connected'; }
+    }
+
+    async function loadDatabases() {
+      const res = await window.api.getDatabases();
+      const sel = document.getElementById('sel-database');
+      sel.innerHTML = '<option value="">— Select a database —</option>';
+      if (res.success) res.data.forEach(db => {
+        const opt = document.createElement('option');
+        opt.value = db; opt.textContent = db;
+        if (db === state.database) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    document.getElementById('sel-database').addEventListener('change', async (e) => {
+      const db = e.target.value;
+      if (!db) { document.getElementById('objects-card').style.display = 'none'; return; }
+      state.database = db;
+      const cfg = { ...state.config, database: db };
+      await window.api.connect(cfg);
+      state.config = cfg;
+      loadObjects(db);
+    });
+
+    async function loadObjects(db) {
+      const res = await window.api.getObjects(db);
+      const container = document.getElementById('obj-list');
+      document.getElementById('objects-card').style.display = 'block';
+      if (!res.success) { container.innerHTML = `<div style="padding:16px;color:var(--danger);font-size:12px;">${res.error}</div>`; return; }
+      state.objects = res.data;
+      renderObjects(res.data);
+    }
+
+    function renderObjects(objects) {
+      const container = document.getElementById('obj-list');
+      container.innerHTML = objects.map(obj => `
+        <div class="object-item" data-schema="${obj.schema_name}" data-name="${obj.object_name}" data-type="${obj.object_type}" data-full="${obj.full_name}">
+          <span class="object-name">${obj.full_name}</span>
+          <span class="object-type">${obj.object_type.replace('_', ' ')}</span>
+        </div>`).join('');
+      container.querySelectorAll('.object-item').forEach(item => {
+        item.addEventListener('click', () => {
+          container.querySelectorAll('.object-item').forEach(i => i.classList.remove('selected'));
+          item.classList.add('selected');
+          state.selectedObject = { schemaName: item.dataset.schema, objectName: item.dataset.name, objectType: item.dataset.type, fullName: item.dataset.full };
+          document.getElementById('btn-select-obj').disabled = false;
+        });
+      });
+    }
+
+    document.getElementById('obj-search').addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      renderObjects((state.objects || []).filter(o => o.full_name.toLowerCase().includes(q) || o.object_type.toLowerCase().includes(q)));
+    });
+
+    document.getElementById('btn-select-obj').addEventListener('click', () => { if (state.selectedObject) showPage('audit-config'); });
+
+    function showAuditConfig() {
+      if (!state.selectedObject) return;
+      document.getElementById('audit-target-info').style.display = 'block';
+      document.getElementById('audit-target-name').textContent = state.selectedObject.fullName;
+      document.getElementById('audit-target-type').textContent = state.selectedObject.objectType.replace('_', ' ');
+    }
+
+    document.getElementById('btn-browse').addEventListener('click', async () => {
+      const res = await window.api.selectFolder();
+      if (res.success) document.getElementById('inp-audit-path').value = res.path;
+    });
+
+    document.getElementById('btn-create-audit').addEventListener('click', async () => {
+      const auditPath = document.getElementById('inp-audit-path').value.trim();
+      if (!auditPath) { showStatus('audit-status', 'Please specify an audit file path', 'error'); return; }
+      if (!state.selectedObject) { showStatus('audit-status', 'No object selected', 'error'); return; }
+      state.auditPath = auditPath;
+      showStatus('audit-status', 'Creating audit…', 'info');
+      const res = await window.api.createAudit({ database: state.database, schemaName: state.selectedObject.schemaName, objectName: state.selectedObject.objectName, auditFilePath: auditPath });
+      showStatus('audit-status', res.success ? `✓ Audit "${res.auditName}" created and started. Changes to [${state.selectedObject.fullName}] are now being recorded.` : `✗ ${res.error}`, res.success ? 'success' : 'error');
+    });
+
+    document.getElementById('btn-remove-audit').addEventListener('click', async () => {
+      if (!state.selectedObject) { showStatus('audit-status', 'No object selected', 'error'); return; }
+      showStatus('audit-status', 'Removing audit…', 'info');
+      const res = await window.api.removeAudit({ database: state.database, schemaName: state.selectedObject.schemaName, objectName: state.selectedObject.objectName });
+      showStatus('audit-status', res.success ? '✓ Audit stopped and removed.' : `✗ ${res.error}`, res.success ? 'success' : 'error');
+    });
+
+    document.getElementById('btn-refresh-results').addEventListener('click', refreshResults);
+
+    async function refreshResults() {
+      if (!state.selectedObject || !state.auditPath) {
+        document.getElementById('results-container').innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-text">Missing configuration</div><div class="empty-state-hint">Select an object and configure the audit path first</div></div>';
+        return;
+      }
+      document.getElementById('results-container').innerHTML = '<div class="empty-state"><div class="spinner" style="width:24px;height:24px;border-width:3px;margin:0 auto 16px;"></div><div class="empty-state-text">Loading audit records…</div></div>';
+      const res = await window.api.readAudit({ database: state.database, schemaName: state.selectedObject.schemaName, objectName: state.selectedObject.objectName, auditFilePath: state.auditPath });
+      if (!res.success) { document.getElementById('results-container').innerHTML = `<div class="empty-state"><div class="empty-state-icon">❌</div><div class="empty-state-text">Error reading audit</div><div class="empty-state-hint">${res.error}</div></div>`; return; }
+      state.results = res.data;
+      state.activeFilter = 'ALL';
+      renderResults(res.data);
+    }
+
+    function renderResults(data) {
+      const summaryEl = document.getElementById('results-summary');
+      const filterEl = document.getElementById('results-filter-bar');
+      const containerEl = document.getElementById('results-container');
+      if (!data || data.length === 0) {
+        summaryEl.style.display = 'none'; filterEl.style.display = 'none';
+        containerEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">No audit events recorded yet</div><div class="empty-state-hint">Make changes to the audited object and refresh</div></div>';
+        return;
+      }
+      const uniqueUsers = [...new Set(data.map(r => r.server_principal_name || r.database_principal_name))];
+      const uniqueIPs = [...new Set(data.map(r => r.client_ip).filter(Boolean))];
+      const actionCounts = {};
+      data.forEach(r => { const a = r.action_name || r.action_id; actionCounts[a] = (actionCounts[a] || 0) + 1; });
+      const topAction = Object.entries(actionCounts).sort((a,b) => b[1]-a[1])[0];
+
+      summaryEl.style.display = 'block';
+      summaryEl.innerHTML = `<div class="summary-grid">
+        <div class="summary-card"><div class="summary-card-label">Total Events</div><div class="summary-card-value">${data.length}</div></div>
+        <div class="summary-card"><div class="summary-card-label">Unique Users</div><div class="summary-card-value">${uniqueUsers.length}</div><div class="summary-card-detail">${uniqueUsers.slice(0,3).join(', ')}${uniqueUsers.length > 3 ? '…' : ''}</div></div>
+        <div class="summary-card"><div class="summary-card-label">Source IPs</div><div class="summary-card-value">${uniqueIPs.length}</div><div class="summary-card-detail">${uniqueIPs.slice(0,3).join(', ')}${uniqueIPs.length > 3 ? '…' : ''}</div></div>
+        <div class="summary-card"><div class="summary-card-label">Most Common</div><div class="summary-card-value">${topAction ? topAction[0] : '—'}</div><div class="summary-card-detail">${topAction ? topAction[1] + ' events' : ''}</div></div>
+      </div>`;
+
+      const actions = ['ALL', ...Object.keys(actionCounts)];
+      filterEl.style.display = 'block';
+      filterEl.innerHTML = `<div class="filter-bar">${actions.map(a => `<div class="filter-chip ${state.activeFilter === a ? 'active' : ''}" data-filter="${a}">${a}${a !== 'ALL' ? ` (${actionCounts[a]})` : ''}</div>`).join('')}</div>`;
+      filterEl.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          state.activeFilter = chip.dataset.filter;
+          renderResults(state.activeFilter === 'ALL' ? state.results : state.results.filter(r => (r.action_name || r.action_id) === state.activeFilter));
+        });
+      });
+
+      containerEl.innerHTML = `<div class="results-header"><span class="results-count">${data.length} event${data.length !== 1 ? 's' : ''}</span></div>
+        <div class="table-wrap"><div class="table-scroll"><table class="results-table"><thead><tr>
+          <th>Time</th><th>Action</th><th>Who</th><th>Client IP</th><th>Hostname</th><th>Application</th><th>Statement</th>
+        </tr></thead><tbody>${data.map((row, i) => `<tr>
+          <td style="white-space:nowrap;font-family:'Roboto Slab',serif;font-size:11px;">${formatTime(row.event_time)}</td>
+          <td>${actionBadge(row.action_name || row.action_id)}</td>
+          <td><div class="who-cell"><span class="who-principal">${row.server_principal_name || '—'}</span>${row.database_principal_name && row.database_principal_name !== row.server_principal_name ? `<span class="who-detail">db: ${row.database_principal_name}</span>` : ''}</div></td>
+          <td><span class="ip-badge">${row.client_ip || '—'}</span></td>
+          <td style="font-size:11px;">${row.host_name || '—'}</td>
+          <td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(row.application_name || '')}">${row.application_name || '—'}</td>
+          <td>${row.statement ? `<span class="stmt-preview" data-idx="${i}" title="Click to view">${escapeHtml(truncate(row.statement, 60))}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
+        </tr>`).join('')}</tbody></table></div></div>`;
+
+      containerEl.querySelectorAll('.stmt-preview').forEach(el => {
+        el.addEventListener('click', () => {
+          document.getElementById('modal-stmt').textContent = data[parseInt(el.dataset.idx)].statement;
+          document.getElementById('stmt-modal').classList.add('show');
+        });
+      });
+    }
+
+    document.getElementById('modal-close').addEventListener('click', () => document.getElementById('stmt-modal').classList.remove('show'));
+    document.getElementById('stmt-modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) document.getElementById('stmt-modal').classList.remove('show'); });
+
+    function formatTime(dt) {
+      if (!dt) return '—';
+      return new Date(dt).toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    }
+    function actionBadge(action) {
+      const cls = (action || '').toLowerCase().replace(/\s/g, '');
+      const valid = ['insert','update','delete','select','alter','execute','create','drop'];
+      return `<span class="action-badge ${valid.includes(cls) ? cls : 'other'}">${action || '?'}</span>`;
+    }
+    function truncate(str, len) { return !str ? '' : str.length > len ? str.substring(0, len) + '…' : str; }
+    function escapeHtml(text) { const d = document.createElement('div'); d.textContent = text || ''; return d.innerHTML; }
+  </script>
+</body>
+</html>
