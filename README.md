@@ -1,6 +1,6 @@
 # Who Changed That — SQL Server Version
 
-**A Kovoco Inc tool** to audit changes on a single SQL Server object and identify who made changes and from where.
+**A Kovoco Inc tool** to audit changes on a single SQL Server user object and identify who made changes and from where.  This tool will not audit objects in system databases (master, model, msdb, tempdb).
 
 **Zero dependencies.** Just copy two files to your server and run.
 
