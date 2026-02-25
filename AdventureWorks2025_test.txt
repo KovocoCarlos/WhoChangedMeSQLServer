@@ -1,0 +1,82 @@
+Use AdventureWorks2025
+GO
+-- Toggle: set to 1 to commit changes, 0 to roll them back after the test DECLARE @DoCommit BIT = 1;
+--BEGIN TRY SET NOCOUNT ON;
+-- Remove any previous sandbox
+IF OBJECT_ID('dbo.ErrorLog_AUDITTEST') IS NOT NULL
+BEGIN
+    PRINT 'Dropping existing sandbox **dbo.ErrorLog_AUDITTEST**.';
+    DROP TABLE dbo.ErrorLog_AUDITTEST;
+END
+
+-- Create a sandbox copy of the original table (copies data; constraints/identities are not preserved)
+PRINT 'Creating sandbox copy **dbo.ErrorLog_AUDITTEST** from **dbo.ErrorLog**.';
+SELECT *
+INTO dbo.ErrorLog_AUDITTEST
+FROM dbo.ErrorLog;
+
+PRINT 'Sandbox created. Summary sample (TOP 5):';
+SELECT TOP (5) *
+FROM dbo.ErrorLog_AUDITTEST;
+
+
+-- 1) SELECT test (done above; show another example)
+PRINT 'Running SELECT test against **dbo.ErrorLog_AUDITTEST**.';
+SELECT COUNT(*) AS 'RowCount' FROM dbo.ErrorLog_AUDITTEST;
+
+-- 2) ALTER TABLE: add a lightweight test column to the sandbox
+PRINT 'Altering sandbox: adding column AuditTestFlag (bit).';
+ALTER TABLE dbo.ErrorLog_AUDITTEST
+ADD AuditTestFlag BIT NULL;
+GO
+
+-- 3) UPDATE test: set AuditTestFlag = 1 on a small set (top 1 row)
+PRINT 'Updating one row: setting AuditTestFlag = 1.';
+UPDATE TOP (1) dbo.ErrorLog_AUDITTEST
+SET AuditTestFlag = 1;
+
+--4) Insert a new test row with AuditTestFlag = 1 (simple insert for audit testing).
+INSERT INTO [dbo].[ErrorLog_AUDITTEST]
+           ([ErrorTime]           ,[UserName]           ,[ErrorNumber]           ,[ErrorSeverity]
+           ,[ErrorState]           ,[ErrorProcedure]           ,[ErrorLine]           ,[ErrorMessage]           ,[AuditTestFlag])
+     VALUES
+           (GETDATE(),'TestUser' ,20,5 ,8,  'THis is bad!', 27, 'This is a test error message for auditing purposes.',1)
+
+-- 5)
+PRINT 'Verify the UPDATE:';
+SELECT TOP (5) *
+FROM dbo.ErrorLog_AUDITTEST
+WHERE AuditTestFlag = 1;
+
+-- 6) INSERT test: duplicate an existing row 
+PRINT 'Inserting a duplicate row into sandbox (simple duplication for audit testing).';
+INSERT INTO dbo.ErrorLog_AUDITTEST
+SELECT TOP (1) [ErrorTime]  ,[UserName]           ,[ErrorNumber]           ,[ErrorSeverity]
+           ,[ErrorState]      ,[ErrorProcedure]    ,[ErrorLine]     ,[ErrorMessage]   ,[AuditTestFlag]
+FROM dbo.ErrorLog_AUDITTEST;
+
+PRINT 'Verify the INSERT: new total row count:';
+SELECT COUNT(*) AS RowCountAfterInsert FROM dbo.ErrorLog_AUDITTEST;
+
+
+-- Cleanup: drop the sandbox to include a DROP TABLE in the flow
+IF OBJECT_ID('dbo.ErrorLog_AUDITTEST') IS NOT NULL
+BEGIN
+    PRINT 'Dropping sandbox table **dbo.ErrorLog_AUDITTEST**.';
+    DROP TABLE dbo.ErrorLog_AUDITTEST;
+END
+
+PRINT 'Test script completed.';
+--END TRY 
+
+-- Attempt to clean up sandbox if left behind
+IF OBJECT_ID('dbo.ErrorLog_AUDITTEST') IS NOT NULL
+BEGIN
+    BEGIN TRY
+        DROP TABLE dbo.ErrorLog_AUDITTEST;
+        PRINT 'Sandbox dropped in error handler.';
+    END TRY
+    BEGIN CATCH
+        PRINT 'Failed to drop sandbox in error handler: ' + ERROR_MESSAGE();
+    END CATCH
+END
