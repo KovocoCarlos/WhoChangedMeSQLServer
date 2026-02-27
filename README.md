@@ -1,6 +1,6 @@
 # Who Changed That — SQL Server Version
 
-**A Kovoco Inc tool** to audit changes on a single SQL Server user object and identify who made changes and from where.  This tool will not audit objects in system databases (master, model, msdb, tempdb).
+**A Kovoco Inc tool** to audit changes on a single SQL Server object and identify who made changes and from where.
 
 **Zero dependencies.** Just copy two files to your server and run.
 
@@ -68,10 +68,6 @@ The path must exist on the SQL Server machine. Create the folder first.
 
 **Fonts not loading**
 The UI uses Google Fonts (Inter, Cabin, Nunito Sans, Roboto Slab). If the server has no internet access, the UI still works — it falls back to system fonts.
-
-## Disclaimer
-
-This tool creates and modifies SQL Server Server Audits and Database Audit Specifications, which are server-level operations requiring elevated permissions. **Test in a non-production environment before using in production.** Kovoco Inc provides this tool as-is, without warranty of any kind. Use at your own risk.
 
 ## License
 
