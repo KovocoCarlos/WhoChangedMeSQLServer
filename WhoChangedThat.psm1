@@ -16,6 +16,20 @@
 # Module-scoped connection - shared across all functions in this module
 $script:SqlConnection = $null
 
+# ─── UI Helpers ──────────────────────────────────────────────────────────────
+function Write-Banner {
+<#
+.SYNOPSIS
+    Writes the startup banner to the console.
+#>
+    Write-Host ""
+    Write-Host "  ╔══════════════════════════════════════════════════╗" -ForegroundColor Cyan
+    Write-Host "  ║  Who Changed That — SQL Server Version           ║" -ForegroundColor Cyan
+    Write-Host "  ║  Powered by Kovoco Inc                           ║" -ForegroundColor Cyan
+    Write-Host "  ╚══════════════════════════════════════════════════╝" -ForegroundColor Cyan
+    Write-Host ""
+}
+
 # ─── HTTP Response Helpers ───────────────────────────────────────────────────
 
 function Send-JsonResponse {
@@ -384,6 +398,7 @@ ORDER  BY event_time DESC
 
 # ─── Exports ─────────────────────────────────────────────────────────────────
 Export-ModuleMember -Function @(
+    'Write-Banner'
     'Send-JsonResponse'
     'Send-HtmlResponse'
     'Get-RequestBody'
