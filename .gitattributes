@@ -1,0 +1,10 @@
+# Ensure PowerShell files always use Windows CRLF line endings.
+# This prevents here-string parse errors on PowerShell 5.1 (Windows Server).
+*.ps1   text eol=crlf
+*.psm1  text eol=crlf
+*.psd1  text eol=crlf
+
+# Other text files use LF
+*.md    text eol=lf
+*.html  text eol=lf
+*.json  text eol=lf
