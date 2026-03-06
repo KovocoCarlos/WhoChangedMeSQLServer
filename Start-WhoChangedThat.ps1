@@ -224,7 +224,7 @@ function Handle-CreateAudit {
         Invoke-SqlNonQuery -Database "master" -Query $q1
 
         # Enable audit
-        $q2 = "IF EXISTS (SELECT 1 FROM sys.server_audits WHERE name = '$auditName' AND status_desc = 'STOPPED') " +
+        $q2 = "IF EXISTS (SELECT 1 FROM sys.server_audits WHERE name = '$auditName' ) " +
               "ALTER SERVER AUDIT [$auditName] WITH (STATE = ON);"
         Invoke-SqlNonQuery -Database "master" -Query $q2
 
