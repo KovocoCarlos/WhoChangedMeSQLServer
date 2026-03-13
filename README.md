@@ -2,7 +2,7 @@
 
 **A Kovoco Inc tool** to audit changes on a single SQL Server object and identify who made changes and from where.
 
-**Zero dependencies.** Just copy two files to your server and run.
+**Zero dependencies.** Just copy the folder to your server and run.
 
 ## Quick Start
 
@@ -20,6 +20,7 @@ Your browser opens automatically to the UI. That's it.
 |------|---------|
 | `Start-WhoChangedThat.ps1` | PowerShell script — runs a local HTTP server + all SQL Server operations |
 | `index.html` | The browser-based UI — served by the PowerShell script |
+| `static/` | Fonts (Good Times) and images (Kovoco bird) served by the script |
 
 **No Node.js, no npm, no Python, no installers.** Uses built-in .NET `System.Data.SqlClient` for SQL Server connectivity.
 
@@ -27,17 +28,17 @@ Your browser opens automatically to the UI. That's it.
 
 - **Windows Server** with **PowerShell 5.1+** (standard on Windows Server 2016+)
 - **SQL Server 2016+** (Standard or Enterprise — Audit requires these editions)
-- A SQL login with **sysadmin** or **ALTER ANY SERVER AUDIT** permission
+- A SQL login with **sysadmin** or **ALTER ANY SERVER AUDIT** permission (or use **Windows Authentication**)
 - The audit file output path must exist on the SQL Server machine
 
 ## How It Works
 
-1. **Connection** — Enter SQL Server credentials (SQL Authentication via .NET SqlClient)
+1. **Connection** — Enter SQL Server credentials (SQL Authentication or Windows Authentication via .NET SqlClient)
 2. **Select Object** — Pick a database and the specific object to audit
 3. **Configure Audit** — Set the path for `.sqlaudit` files, then create the audit
 4. **Audit Results** — View who changed what, from which IP, hostname, and application
 
-The tool creates a **Server Audit** + **Database Audit Specification** scoped to your single object, capturing INSERT, UPDATE, DELETE, SELECT, EXECUTE, and schema changes (ALTER/DROP/CREATE).
+The tool creates a **Server Audit** + **Database Audit Specification** scoped to your single object, capturing INSERT, UPDATE, DELETE, SELECT, EXECUTE, schema changes (ALTER/DROP/CREATE), and permission changes (GRANT/DENY/REVOKE).
 
 ## Options
 
