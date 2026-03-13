@@ -1,0 +1,26 @@
+Question 1 — Problem Existence
+"Do you currently audit your SQL Server environment?"
+Prompts if they hesitate:
+
+"I mean things like tracking who accessed data, who changed a table, login activity, permission changes — anything like that."
+"This could be manual, automated, using native SQL Server tools, or a third-party product."
+
+Why it matters: This is your qualifier. If they say no, you're uncovering a latent market. If yes, you move deeper.
+
+Question 2 — Desire to Audit
+"How would you describe your desire to audit SQL Server — is it something you desperately need to do, want to do, would only do if it were easy, don't want to do, or would never consider?"
+ScaleWhat it means for you"Desperately need to"Compliance mandate, audit failure, or breach risk — hot prospect"Want to"Motivated but not urgent — educatable buyer"Only if it were easy"Friction is the barrier — kAudit's ease of use is your pitch"Don't want to"No internal champion yet"Would never"Not your market
+Prompts if they hesitate:
+
+"Is there a compliance requirement driving this — like SOX, HIPAA, PCI, or a cyber insurance policy?"
+"Has a regulator, auditor, or security team ever asked you about SQL Server activity logs?"
+
+
+Question 3 — Struggle Intensity
+"For those who do audit SQL Server — how hard is it? Would you say it's the worst thing you deal with, pretty manageable, or honestly it couldn't be better?"
+ScaleWhat it means for you"The worst thing I do"Maximum pain — strong replacement candidate"Hard but manageable"Room to win on ROI and time savings"Not hard"Either they have a solution or the scope is small"Couldn't be better"Satisfied — understand what they're using
+Prompts if they hesitate:
+
+"Think about the last time you had to produce an audit report — how long did that take?"
+"Have you ever had to figure out who changed a stored procedure or who deleted rows from a table? What was that like?"
+"What tools are you using today, and what do you wish they did better?"

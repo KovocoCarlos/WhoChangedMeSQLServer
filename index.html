@@ -6,6 +6,13 @@
   <title>Who Changed That — SQL Server Version</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Cabin:wght@400;500;600;700&family=Nunito+Sans:wght@300;400;500;600;700&family=Roboto+Slab:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    @font-face {
+      font-family: 'Good Times';
+      src: url('/static/fonts/good-times.otf') format('opentype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
@@ -73,7 +80,7 @@
       letter-spacing: 1.5px;
       text-transform: uppercase;
     }
-    .titlebar-text .brand-mark { color: var(--kovoco-blue); font-weight: 900; }
+    .titlebar-text .brand-mark { color: var(--kovoco-blue); font-weight: 900; font-family: 'Good Times', 'Inter', sans-serif; letter-spacing: 2px; }
 
     /* ─── Layout ────────────────────────────────────────────────── */
     .app { display: flex; height: calc(100vh - 44px); }
@@ -119,7 +126,10 @@
     .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); flex-shrink: 0; }
     .conn-dot.connected { background: var(--cool-mint); box-shadow: 0 0 10px var(--cool-mint-glow); }
     .conn-text { color: var(--text-secondary); }
-    .sidebar-footer { padding: 0 14px 14px; font-family: 'Inter', sans-serif; font-size: 9px; color: var(--text-muted); opacity: 0.5; letter-spacing: 0.5px; }
+    .sidebar-footer { padding: 0 14px 14px; font-family: 'Inter', sans-serif; font-size: 9px; color: var(--text-muted); opacity: 0.5; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
+    .sidebar-footer a { color: var(--kovoco-blue); text-decoration: none; }
+    .sidebar-footer a:hover { text-decoration: underline; opacity: 0.8; }
+    .sidebar-footer img { width: 24px; height: 24px; object-fit: contain; }
 
     /* ─── Main ──────────────────────────────────────────────────── */
     .main-content { flex: 1; overflow-y: auto; padding: 32px 36px; background: var(--bg-deep); }
@@ -233,6 +243,9 @@
     .action-badge.execute { background: var(--light-purple-glow); color: var(--light-purple); }
     .action-badge.create  { background: rgba(217,110,174,0.12); color: #d96eae; }
     .action-badge.drop    { background: var(--danger-glow); color: var(--danger); }
+    .action-badge.grant, .action-badge.grantwithgrant { background: rgba(240,168,48,0.12); color: #e8b830; }
+    .action-badge.deny    { background: var(--danger-glow); color: var(--danger); }
+    .action-badge.revoke  { background: rgba(217,110,174,0.12); color: #d96eae; }
     .action-badge.other   { background: rgba(80,96,128,0.12); color: var(--text-muted); }
 
     .who-cell { display: flex; flex-direction: column; gap: 2px; }
@@ -322,7 +335,10 @@
           <span class="conn-text" id="connText">Not connected</span>
         </div>
       </div>
-      <div class="sidebar-footer">Powered by Kovoco Inc</div>
+      <div class="sidebar-footer">
+        <img src="/static/images/kovoco-bird.png" alt="Kovoco">
+        Powered by <a href="https://www.kovoco.net" target="_blank" rel="noopener">Kovoco Inc</a>
+      </div>
     </div>
 
     <div class="main-content">
@@ -350,6 +366,10 @@
               <input type="password" class="form-input" id="inp-pass" placeholder="••••••••">
             </div>
             <div class="form-group full">
+              <div class="checkbox-row">
+                <input type="checkbox" id="inp-winauth">
+                <label for="inp-winauth">Use Windows Authentication</label>
+              </div>
               <div class="checkbox-row">
                 <input type="checkbox" id="inp-encrypt">
                 <label for="inp-encrypt">Encrypt connection</label>
@@ -482,11 +502,18 @@
         port: document.getElementById('inp-port').value,
         username: document.getElementById('inp-user').value,
         password: document.getElementById('inp-pass').value,
+        windowsAuth: document.getElementById('inp-winauth').checked,
         encrypt: document.getElementById('inp-encrypt').checked,
         trustCert: document.getElementById('inp-trustcert').checked,
         database: state.database || 'master'
       };
     }
+
+    document.getElementById('inp-winauth').addEventListener('change', (e) => {
+      const hide = e.target.checked;
+      document.getElementById('inp-user').closest('.form-group').style.display = hide ? 'none' : 'flex';
+      document.getElementById('inp-pass').closest('.form-group').style.display = hide ? 'none' : 'flex';
+    });
 
     function showStatus(elId, msg, type) {
       const el = document.getElementById(elId);
@@ -684,7 +711,7 @@
     }
     function badge(action) {
       const cls = (action || '').toLowerCase().replace(/\s/g, '');
-      const valid = ['insert','update','delete','select','alter','execute','create','drop'];
+      const valid = ['insert','update','delete','select','alter','execute','create','drop','grant','deny','revoke','grantwithgrant'];
       return `<span class="action-badge ${valid.includes(cls) ? cls : 'other'}">${esc(action || '?')}</span>`;
     }
     function trunc(s, n) { return !s ? '' : s.length > n ? s.substring(0, n) + '…' : s; }

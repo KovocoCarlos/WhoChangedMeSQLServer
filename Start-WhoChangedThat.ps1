@@ -56,6 +56,21 @@ function Send-HtmlResponse {
     $Response.OutputStream.Close()
 }
 
+function Send-FileResponse {
+    param($Response, [string]$FilePath, [string]$ContentType)
+    if (-not (Test-Path $FilePath)) {
+        Send-JsonResponse -Response $Response -Data @{ error = "Not found" } -StatusCode 404
+        return
+    }
+    $bytes = [System.IO.File]::ReadAllBytes($FilePath)
+    $Response.StatusCode = 200
+    $Response.ContentType = $ContentType
+    $Response.ContentLength64 = $bytes.Length
+    $Response.Headers.Add('Cache-Control', 'public, max-age=3600')
+    $Response.OutputStream.Write($bytes, 0, $bytes.Length)
+    $Response.OutputStream.Close()
+}
+
 function Get-RequestBody {
     param($Request)
     $reader = New-Object System.IO.StreamReader($Request.InputStream, $Request.ContentEncoding)
@@ -123,7 +138,11 @@ function Invoke-SqlNonQuery {
 function Handle-TestConnection {
     param($Body)
     try {
-        $connStr = "Server=$($Body.server),$($Body.port);User Id=$($Body.username);Password=$($Body.password);Connection Timeout=10;"
+        if ($Body.windowsAuth) {
+            $connStr = "Server=$($Body.server),$($Body.port);Integrated Security=SSPI;Connection Timeout=10;"
+        } else {
+            $connStr = "Server=$($Body.server),$($Body.port);User Id=$($Body.username);Password=$($Body.password);Connection Timeout=10;"
+        }
         if ($Body.encrypt) { $connStr += "Encrypt=True;" }
         if ($Body.trustCert) { $connStr += "TrustServerCertificate=True;" }
 
@@ -147,7 +166,11 @@ function Handle-Connect {
         }
 
         $db = if ($Body.database) { $Body.database } else { "master" }
-        $connStr = "Server=$($Body.server),$($Body.port);Database=$db;User Id=$($Body.username);Password=$($Body.password);Connection Timeout=15;"
+        if ($Body.windowsAuth) {
+            $connStr = "Server=$($Body.server),$($Body.port);Database=$db;Integrated Security=SSPI;Connection Timeout=15;"
+        } else {
+            $connStr = "Server=$($Body.server),$($Body.port);Database=$db;User Id=$($Body.username);Password=$($Body.password);Connection Timeout=15;"
+        }
         if ($Body.encrypt) { $connStr += "Encrypt=True;" }
         if ($Body.trustCert) { $connStr += "TrustServerCertificate=True;" }
 
@@ -224,23 +247,29 @@ function Handle-CreateAudit {
         Invoke-SqlNonQuery -Database "master" -Query $q1
 
         # Enable audit
-        $q2 = "IF EXISTS (SELECT 1 FROM sys.server_audits WHERE name = '$auditName' ) " +
+        $q2 = "IF EXISTS (SELECT 1 FROM sys.server_audits WHERE name = '$auditName' AND is_state_enabled = 0) " +
               "ALTER SERVER AUDIT [$auditName] WITH (STATE = ON);"
         Invoke-SqlNonQuery -Database "master" -Query $q2
 
+        # Drop existing database audit specification so it is always recreated with current definition
+        $q3drop = "IF EXISTS (SELECT 1 FROM sys.database_audit_specifications WHERE name = '$specName') " +
+                  "BEGIN " +
+                  "ALTER DATABASE AUDIT SPECIFICATION [$specName] WITH (STATE = OFF); " +
+                  "DROP DATABASE AUDIT SPECIFICATION [$specName]; " +
+                  "END"
+        Invoke-SqlNonQuery -Database $db -Query $q3drop
+
         # Create database audit specification
-        $q3 = "IF NOT EXISTS (SELECT 1 FROM sys.database_audit_specifications WHERE name = '$specName') " +
-              "BEGIN " +
-              "CREATE DATABASE AUDIT SPECIFICATION [$specName] " +
+        $q3 = "CREATE DATABASE AUDIT SPECIFICATION [$specName] " +
               "FOR SERVER AUDIT [$auditName] " +
               "ADD (SCHEMA_OBJECT_CHANGE_GROUP), " +
+              "ADD (SCHEMA_OBJECT_PERMISSION_CHANGE_GROUP), " +
               "ADD (INSERT ON OBJECT::[$schema].[$obj] BY [public]), " +
               "ADD (UPDATE ON OBJECT::[$schema].[$obj] BY [public]), " +
               "ADD (DELETE ON OBJECT::[$schema].[$obj] BY [public]), " +
               "ADD (SELECT ON OBJECT::[$schema].[$obj] BY [public]), " +
               "ADD (EXECUTE ON OBJECT::[$schema].[$obj] BY [public]) " +
-              "WITH (STATE = ON); " +
-              "END"
+              "WITH (STATE = ON);"
         Invoke-SqlNonQuery -Database $db -Query $q3
 
         Write-Host "  [AUDIT CREATED] $auditName -> $($Body.auditFilePath)" -ForegroundColor Green
@@ -301,7 +330,9 @@ function Handle-ReadAudit {
              "CASE action_id " +
              "WHEN 'IN' THEN 'INSERT' WHEN 'UP' THEN 'UPDATE' WHEN 'DL' THEN 'DELETE' " +
              "WHEN 'SL' THEN 'SELECT' WHEN 'EX' THEN 'EXECUTE' WHEN 'AL' THEN 'ALTER' " +
-             "WHEN 'CR' THEN 'CREATE' WHEN 'DR' THEN 'DROP' ELSE RTRIM(action_id) " +
+             "WHEN 'CR' THEN 'CREATE' WHEN 'DR' THEN 'DROP' " +
+             "WHEN 'G' THEN 'GRANT' WHEN 'D' THEN 'DENY' WHEN 'R' THEN 'REVOKE' WHEN 'GWG' THEN 'GRANT WITH GRANT' " +
+             "ELSE RTRIM(action_id) " +
              "END AS action_name, " +
              "succeeded, server_principal_name, database_principal_name, " +
              "server_instance_name, database_name, schema_name, object_name, " +
@@ -366,8 +397,19 @@ if (-not $NoBrowser) {
 }
 
 try {
+    [Console]::TreatControlCAsInput = $true
     while ($listener.IsListening) {
-        $context = $listener.GetContext()
+        # Use async accept so the loop can check for Ctrl+C
+        $contextTask = $listener.GetContextAsync()
+        while (-not $contextTask.AsyncWaitHandle.WaitOne(200)) {
+            if ([Console]::KeyAvailable) {
+                $key = [Console]::ReadKey($true)
+                if ($key.Key -eq 'C' -and $key.Modifiers -band [ConsoleModifiers]::Control) {
+                    throw [OperationCanceledException]::new("Ctrl+C pressed")
+                }
+            }
+        }
+        $context = $contextTask.GetAwaiter().GetResult()
         $request = $context.Request
         $response = $context.Response
 
@@ -427,6 +469,31 @@ try {
                     $result = Handle-ReadAudit -Body $body
                     Send-JsonResponse -Response $response -Data $result
                 }
+                { $_ -like '/static/*' } {
+                    $relPath = $urlPath.Substring(8) -replace '[/\\]+','\'
+                    $filePath = Join-Path (Join-Path $PSScriptRoot "static") $relPath
+                    # Prevent directory traversal
+                    $staticRoot = Join-Path $PSScriptRoot "static"
+                    if (-not (Resolve-Path -LiteralPath $filePath -ErrorAction SilentlyContinue)) {
+                        Send-JsonResponse -Response $response -Data @{ error = "Not found" } -StatusCode 404
+                    } else {
+                        $resolvedPath = (Resolve-Path -LiteralPath $filePath).Path
+                        if (-not $resolvedPath.StartsWith($staticRoot)) {
+                            Send-JsonResponse -Response $response -Data @{ error = "Not found" } -StatusCode 404
+                        } else {
+                            $ext = [System.IO.Path]::GetExtension($filePath).ToLower()
+                            $contentTypes = @{
+                                '.png' = 'image/png'; '.jpg' = 'image/jpeg'; '.gif' = 'image/gif';
+                                '.svg' = 'image/svg+xml'; '.ico' = 'image/x-icon';
+                                '.otf' = 'font/otf'; '.ttf' = 'font/ttf';
+                                '.woff' = 'font/woff'; '.woff2' = 'font/woff2';
+                                '.css' = 'text/css'; '.js' = 'application/javascript'
+                            }
+                            $ct = if ($contentTypes[$ext]) { $contentTypes[$ext] } else { 'application/octet-stream' }
+                            Send-FileResponse -Response $response -FilePath $resolvedPath -ContentType $ct
+                        }
+                    }
+                }
                 default {
                     Send-JsonResponse -Response $response -Data @{ error = "Not found" } -StatusCode 404
                 }
@@ -442,6 +509,7 @@ try {
     }
 }
 finally {
+    [Console]::TreatControlCAsInput = $false
     Write-Host ""
     Write-Host "  Shutting down..." -ForegroundColor Yellow
     if ($script:SqlConnection -and $script:SqlConnection.State -eq 'Open') {
